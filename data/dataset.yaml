@@ -1,0 +1,8 @@
+path: C:/rdd/road_damage_detection/data/processed
+train: train/images
+val: val/images
+test: test/images
+
+names:
+  0: pothole
+  1: crack

@@ -1,0 +1,121 @@
+# =============================================================================
+# Road Damage Detection & Severity Prediction — Phase 1 Configuration
+# All tunable values live here. Do not hard-code magic numbers in source.
+# =============================================================================
+
+project:
+  name: "AI-Based Smart Road Damage Detection and Severity Prediction System"
+  phase: 1
+  seed: 42
+
+# ---------------------------------------------------------------------------
+# Model
+# ---------------------------------------------------------------------------
+model:
+  name: "yolo26n.pt"          # primary model (configurable)
+  fallback_name: "yolo11n.pt" # benchmark alternative
+  weights_dir: "models/trained"
+  pretrained_dir: "models/pretrained"
+  trained_weights: "models/trained/run/weights/best.pt"      # set after training, e.g. "models/trained/run1/weights/best.pt"
+  image_size: 640
+  confidence_threshold: 0.15
+  iou_threshold: 0.45
+  device: "auto"              # auto | cuda | cpu
+
+# ---------------------------------------------------------------------------
+# Dataset
+# ---------------------------------------------------------------------------
+dataset:
+  config_path: "data/dataset.yaml"
+  raw_dir: "data/raw"
+  processed_dir: "data/processed"
+  classes:
+    0: "pothole"
+    1: "crack"
+  split:
+    train: 0.75
+    val: 0.15
+    test: 0.10
+
+# ---------------------------------------------------------------------------
+# Training
+# ---------------------------------------------------------------------------
+training:
+  epochs: 100
+  batch_size: 16          # reduce to 8/4 if GPU memory is insufficient (RTX 3050 = 4GB)
+  workers: 4
+  learning_rate: null      # null = use Ultralytics default schedule
+  output_dir: "models/trained"
+  patience: 20             # early stopping
+  amp: true                # mixed precision, recommended on RTX 3050 (4GB VRAM)
+
+# ---------------------------------------------------------------------------
+# Video inference
+# ---------------------------------------------------------------------------
+video:
+  frame_sample_rate: 5     # process every Nth frame (1 = every frame)
+  output_dir: "outputs/videos"
+  event_aggregation:
+    enabled: false          # optional Phase-1 extra, off by default
+    iou_threshold: 0.5
+    max_frame_gap: 10
+
+# ---------------------------------------------------------------------------
+# Dimension estimation
+# ---------------------------------------------------------------------------
+dimension_estimation:
+  enabled: true
+  method: "pinhole_ground_plane"   # documented, approximate — NOT a calibrated measurement
+  reference_width_m: null
+  camera_height_m: null
+  focal_length_px: null
+  # If focal_length_px AND camera_height_m are both null, the system will
+  # only report pixel-space measurements and explicitly mark physical
+  # dimensions as "Unavailable - calibration not provided".
+
+# ---------------------------------------------------------------------------
+# Severity engine
+# ---------------------------------------------------------------------------
+severity:
+  # normalization reference points (documented assumptions, not measured constants)
+  normalization:
+    size_reference_relative_area: 0.06   # relative_area at/above this saturates size_score to 1.0
+    dimension_reference_m:
+      pothole: 0.6   # estimated width/diameter (m) that saturates dimension_score to 1.0
+      crack: 1.5      # estimated length (m) that saturates dimension_score to 1.0
+
+  weights:
+    pothole:
+      size: 0.40
+      dimension: 0.40
+      confidence: 0.20
+    crack:
+      size: 0.45
+      dimension: 0.35
+      confidence: 0.20
+
+  thresholds:
+    low: 25
+    moderate: 50
+    high: 75
+    # 0-25 Low | >25-50 Moderate | >50-75 High | >75-100 Critical
+
+# ---------------------------------------------------------------------------
+# Database
+# ---------------------------------------------------------------------------
+database:
+  path: "data/road_damage.db"
+
+# ---------------------------------------------------------------------------
+# Output directories
+# ---------------------------------------------------------------------------
+outputs:
+  images_dir: "outputs/images"
+  videos_dir: "outputs/videos"
+  reports_dir: "outputs/reports"
+
+# ---------------------------------------------------------------------------
+# Logging
+# ---------------------------------------------------------------------------
+logging:
+  level: "INFO"

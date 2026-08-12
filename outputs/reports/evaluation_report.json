@@ -1,0 +1,27 @@
+{
+  "weights": "C:\\rdd\\road_damage_detection\\models\\trained\\run\\weights\\best.pt",
+  "split": "test",
+  "precision": 0.36490838451303165,
+  "recall": 0.35182431977611406,
+  "f1": 0.3582469263467717,
+  "map50": 0.28363989345493423,
+  "map50_95": 0.08053741619280182,
+  "class_wise": {
+    "pothole": {
+      "precision": 0.22913087547002445,
+      "recall": 0.31095624833778907,
+      "ap50": 0.18154691407291376
+    },
+    "crack": {
+      "precision": 0.5006858935560389,
+      "recall": 0.39269239121443905,
+      "ap50": 0.38573287283695473
+    }
+  },
+  "inference_latency_ms": 32.04,
+  "fps": 31.21,
+  "model_parameters": 2375226,
+  "model_size_mb": 5.14,
+  "note": "All values below are measured on this run. Nothing here is a target or invented figure.",
+  "latency_measured_on": "20 images from 'test' split, device=cuda"
+}

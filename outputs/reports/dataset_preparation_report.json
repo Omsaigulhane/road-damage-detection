@@ -1,0 +1,17 @@
+{
+  "source": "C:\\rdd\\RDD2020\\dataset_RDD\\train\\train\\Czech",
+  "total_xml_files_found": 2829,
+  "images_converted": 1072,
+  "skipped_no_matching_image": 0,
+  "skipped_no_mapped_annotations": 1757,
+  "split_counts": {
+    "train": 803,
+    "val": 161,
+    "test": 108
+  },
+  "class_distribution": {
+    "pothole": 197,
+    "crack": 1548
+  },
+  "total_annotations": 1745
+}
