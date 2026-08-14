@@ -1,11 +1,11 @@
 {
   "train": {
     "split": "train",
-    "num_images": 803,
-    "num_annotations": 1278,
+    "num_images": 3205,
+    "num_annotations": 6309,
     "class_counts": {
-      "1": 1137,
-      "0": 141
+      "1": 3799,
+      "0": 2510
     },
     "missing_images": [],
     "missing_labels": [],
@@ -18,11 +18,11 @@
   },
   "val": {
     "split": "val",
-    "num_images": 161,
-    "num_annotations": 302,
+    "num_images": 659,
+    "num_annotations": 1394,
     "class_counts": {
-      "0": 34,
-      "1": 268
+      "0": 517,
+      "1": 877
     },
     "missing_images": [],
     "missing_labels": [],
@@ -35,11 +35,11 @@
   },
   "test": {
     "split": "test",
-    "num_images": 108,
-    "num_annotations": 165,
+    "num_images": 431,
+    "num_annotations": 873,
     "class_counts": {
-      "0": 22,
-      "1": 143
+      "0": 357,
+      "1": 516
     },
     "missing_images": [],
     "missing_labels": [],
