@@ -18,8 +18,8 @@
       "ap50": 0.48176601175137235
     }
   },
-  "inference_latency_ms": 27.91,
-  "fps": 35.83,
+  "inference_latency_ms": 51.72,
+  "fps": 19.34,
   "model_parameters": 2375226,
   "model_size_mb": 5.15,
   "note": "All values below are measured on this run. Nothing here is a target or invented figure.",
