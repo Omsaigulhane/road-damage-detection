@@ -1,0 +1,367 @@
+# -*- coding: utf-8 -*-
+from reportlab.lib.pagesizes import A4
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.units import inch
+from reportlab.lib import colors
+from reportlab.platypus import (SimpleDocTemplate, Paragraph, Spacer, ListFlowable,
+                                 ListItem, Table, TableStyle, HRFlowable, KeepTogether)
+from reportlab.lib.enums import TA_CENTER, TA_LEFT
+
+styles = getSampleStyleSheet()
+
+title_style = ParagraphStyle('TitleStyle', parent=styles['Title'], fontSize=20,
+                              textColor=colors.HexColor('#1a3d6d'), spaceAfter=6)
+subtitle_style = ParagraphStyle('SubtitleStyle', parent=styles['Normal'], fontSize=12,
+                                 alignment=TA_CENTER, textColor=colors.HexColor('#555555'))
+topic_style = ParagraphStyle('TopicStyle', parent=styles['Heading1'], fontSize=14,
+                              textColor=colors.white, backColor=colors.HexColor('#1a3d6d'),
+                              spaceBefore=16, spaceAfter=8, leftIndent=6, borderPadding=(6,6,6,6))
+analogy_head = ParagraphStyle('AnalogyHead', parent=styles['Normal'], fontSize=10.5,
+                               textColor=colors.white, backColor=colors.HexColor('#e07a1f'),
+                               fontName='Helvetica-Bold', leftIndent=4, borderPadding=(4,4,4,4),
+                               spaceBefore=6, spaceAfter=4)
+plain_head = ParagraphStyle('PlainHead', parent=styles['Normal'], fontSize=10.5,
+                             textColor=colors.white, backColor=colors.HexColor('#2e8b57'),
+                             fontName='Helvetica-Bold', leftIndent=4, borderPadding=(4,4,4,4),
+                             spaceBefore=6, spaceAfter=4)
+math_head = ParagraphStyle('MathHead', parent=styles['Normal'], fontSize=10.5,
+                            textColor=colors.white, backColor=colors.HexColor('#6a4fa3'),
+                            fontName='Helvetica-Bold', leftIndent=4, borderPadding=(4,4,4,4),
+                            spaceBefore=6, spaceAfter=4)
+gap_head = ParagraphStyle('GapHead', parent=styles['Normal'], fontSize=10.5,
+                           textColor=colors.white, backColor=colors.HexColor('#c0392b'),
+                           fontName='Helvetica-Bold', leftIndent=4, borderPadding=(4,4,4,4),
+                           spaceBefore=6, spaceAfter=4)
+body_style = ParagraphStyle('BodyStyle', parent=styles['Normal'], fontSize=10.3,
+                             leading=14.5, spaceAfter=4)
+bullet_style = ParagraphStyle('BulletStyle', parent=styles['Normal'], fontSize=10.2,
+                               leading=14, spaceAfter=3)
+
+def bullets(items):
+    flow = []
+    for it in items:
+        flow.append(ListItem(Paragraph(it, bullet_style), leftIndent=14, spaceAfter=2,
+                              bulletColor=colors.HexColor('#1a3d6d')))
+    return ListFlowable(flow, bulletType='bullet', start='•', leftIndent=10)
+
+# =========================================================================
+# CONTENT: Feynman-style notes
+# Each topic: (title, plain_explanation(list), analogy(list), core_idea_math(list),
+#              common_confusion(list))
+# =========================================================================
+topics = [
+
+("1. What is 'Telecom Traffic' Really?",
+ [
+  "Forget wires and switches for a second. 'Traffic' just means: how busy is the system, on average, at any moment?",
+  "Every time someone makes a call, they 'occupy' one channel/trunk for the duration of that call. Traffic is basically counting how many channels are occupied, averaged over time.",
+  "The whole chapter exists because of one simple, expensive problem: a phone company can't afford to give every single subscriber their own permanent line to everyone they might ever call. So they build a shared pool of trunks (like a shared pool of highway lanes) and hope not too many people need a lane at the same instant."
+ ],
+ [
+  "<b>Analogy — Restaurant tables:</b> A restaurant has 20 tables (trunks). Not every customer arrives at once, and each stays only a while (holding time), then leaves. 'Traffic intensity' is like asking: on average, how many tables are occupied right now? If on average 12 of the 20 tables are full, traffic = 12 'table-Erlangs'.",
+  "The restaurant owner doesn't need 1000 tables just because 1000 people are members of his loyalty program — he only needs enough tables to comfortably handle how many show up AT THE SAME TIME."
+ ],
+ [
+  "Traffic Intensity A = U × A<sub>u</sub> (users × traffic per user), and A<sub>u</sub> = λH (arrival rate × holding time).",
+  "So A = CH/T — literally: (number of calls × how long each call lasts) ÷ (the total time window you're observing). It's a ratio, which is why it's unitless — but we still call the unit 'Erlang' to keep track of what kind of ratio it is.",
+  "1 Erlang = one channel busy 100% of the time during the observation period. If A = 0.5 Erlang, that channel (or that group, on average) is busy half the time."
+ ],
+ [
+  "<b>Common confusion:</b> People think Erlang is like a count of calls. It is NOT. It's a measure of OCCUPANCY (busy-ness), not a call count. 5 short calls and 1 long call can produce the same Erlang value if total busy-time is equal.",
+  "Also — 'holding time' includes the whole duration the trunk is tied up, which is not always exactly 'talk time'; it can include setup delays too, depending on definition used."
+ ]),
+
+("2. Grade of Service (GOS) & Congestion",
+ [
+  "GOS answers one brutally honest question: 'Out of everyone who tried to call, what fraction got unlucky and couldn't get through?'",
+  "Congestion is simply: ALL the trunks are busy right now, so a new caller can't be connected. Something must happen to that unlucky caller — either the call is rejected outright (lost-call system) or made to wait (queuing/delay system)."
+ ],
+ [
+  "<b>Analogy — Full parking lot:</b> If a parking lot has 50 spaces and all 50 are full, the 51st car either (a) is turned away (lost-call system — like a strict mall), or (b) waits in a queue for the next space to open (delay system — like an airport valet queue).",
+  "GOS is like asking: 'Out of 1000 cars that tried to park today, how many had to be turned away?' If 5 were turned away, GOS = 5/1000 = 0.005."
+ ],
+ [
+  "GOS = B = (Number of calls lost) / (Number of calls offered) = traffic lost / traffic offered.",
+  "Traffic carried = Traffic offered − Traffic lost — because 'carried' is just what actually got through."
+ ],
+ [
+  "<b>Common confusion:</b> A LOWER GOS number is BETTER (fewer people are turned away). Students sometimes assume bigger = better because '0.05' feels like a small, safe number, but it isn't — it means 5% of calls fail, which is actually a poor grade of service. Aim for tiny values like 0.001–0.01."
+ ]),
+
+("3. Pure Chance Traffic & Why Poisson Shows Up",
+ [
+  "The whole mathematics of this chapter rests on one assumption: nobody plans their phone calls together. Call arrivals are RANDOM and INDEPENDENT — my calling you has nothing to do with someone else calling their friend at the same moment.",
+  "Because arrivals are 'memoryless' (the fact that no call has arrived in the last 10 seconds tells you nothing about whether one is about to arrive), the count of arrivals in any time window follows the Poisson distribution — the same maths used for radioactive decay, meteor strikes, and customers walking into a shop."
+ ],
+ [
+  "<b>Analogy — Raindrops on a pavement:</b> Imagine rain falling completely randomly, drop by drop, on a 1-meter square patch of pavement. You can't predict exactly when the next raindrop lands, but you CAN predict, on average, how many will land in the next minute. That's Poisson thinking — 'I don't know the next event's exact time, but I know the average rate.'",
+  "This is exactly like call arrivals: you don't know exactly when the next phone call will come in, but the exchange knows the AVERAGE rate (λ) from experience, and that's enough to design the system."
+ ],
+ [
+  "P(x) = (μ<super>x</super>/x!)·e<super>−μ</super> — probability of exactly x arrivals when μ is the expected (average) number of arrivals.",
+  "Poisson is actually just the Binomial distribution taken to an extreme: imagine splitting time into a huge number of tiny slices (n→∞), where in each tiny slice a call either arrives or doesn't (like flipping a heavily-biased coin many times). As n grows huge and probability-per-slice shrinks, Binomial mathematically collapses into Poisson.",
+  "The GAP between calls also has a distribution: negative exponential, P(T≥t) = e<super>−t/H</super>. This says: long gaps between calls are possible but become exponentially rarer."
+ ],
+ [
+  "<b>Common confusion:</b> 'Pure chance' does NOT mean uniform / evenly-spaced arrivals. It means the opposite — clumpy, unpredictable, bursty arrivals that still average out to a known rate over long time. Real busy-hour traffic is genuinely bursty, not evenly spaced."
+ ]),
+
+("4. Statistical Equilibrium",
+ [
+  "This is really just a fancy way of saying: 'let's do our maths during a period where things aren't changing too fast.'",
+  "Early morning, traffic is rising. Midday, it might dip. Evening, it might rise again. But during the busiest single hour, traffic is roughly flat/stable — arrivals and departures balance out, so the SYSTEM'S AVERAGE STATE stops changing noticeably. That stable window is what engineers use for their calculations."
+ ],
+ [
+  "<b>Analogy — A bathtub with the tap on and the drain open:</b> If you open the drain to match the tap's flow rate exactly, the water level stops changing — it reaches a steady, stable level. That's statistical equilibrium: the rate of calls STARTING equals the rate of calls ENDING, so the average number of ongoing calls stays roughly constant."
+ ],
+ [
+  "No new formula here — this is an ASSUMPTION that justifies using a single fixed value of A (traffic intensity) throughout a calculation, instead of a value that keeps changing with time.",
+  "Busy-hour traffic is chosen deliberately because it's the closest real traffic gets to this idealized 'steady state'."
+ ],
+ [
+  "<b>Common confusion:</b> Statistical equilibrium doesn't mean NO calls are starting or ending — it means the RATE of starting equals the RATE of ending, so the population (number of active calls) hovers around a stable average, even though individual calls come and go constantly."
+ ]),
+
+("5. Lost-Call Systems & Erlang B Formula — The Core Idea",
+ [
+  "Take the pure-chance-traffic idea and add ONE hard constraint: there are only N trunks, not infinite. If more than N calls try to happen at once, the extras are simply rejected (lost).",
+  "Erlang's genius move: instead of tracking 'how did we get here', just balance the probabilities of being in each possible state (0 busy trunks, 1 busy, 2 busy, ... N busy) — like a set of interconnected buckets where water in = water out for each bucket in steady state."
+ ],
+ [
+  "<b>Analogy — Musical chairs with a twist:</b> Imagine N chairs. People randomly arrive and sit, and randomly get up and leave (not because music stops, but simply after a random amount of time). If you have N=5 chairs and 6th person shows up while all 5 are taken, they're simply turned away — no waiting, no queue.",
+  "Erlang's formula answers: 'given the average request rate, what fraction of ARRIVING people, on average, will find NO chair free?'"
+ ],
+ [
+  "P(x) = (A<super>x</super>/x!)·P(0) — probability that exactly x trunks are busy, built from the Poisson-like structure but capped at N trunks.",
+  "Normalizing (making all probabilities sum to 1) across x = 0 to N gives Erlang's Lost Call (First Erlang) Formula: B = E<sub>1,N</sub>(A) = (A<super>N</super>/N!) ÷ Σ(A<super>k</super>/k!, k=0 to N).",
+  "The RECURRENCE relation E<sub>1,N</sub>(A) = A·E<sub>1,N−1</sub>(A) / [N + A·E<sub>1,N−1</sub>(A)] exists purely for CONVENIENCE — instead of recomputing huge factorials for every N, you can build up N=1, then N=2, then N=3... step by step, like climbing a ladder."
+ ],
+ [
+  "<b>Common confusion:</b> Students think adding MORE trunks always helps a LOT. In reality, going from N=5 to N=6 might barely improve GOS, while going from N=20 to N=21 (relatively) could improve it more dramatically per trunk added — bigger pools are more 'efficient' per trunk (this is the Traffic Performance idea, see below)."
+ ]),
+
+("6. Traffic Performance — Why Bigger Trunk Groups Are Smarter",
+ [
+  "This is basically a 'pooling' argument you'll recognize from statistics/economics: pooling resources smooths out randomness.",
+  "A small group of trunks is more easily overwhelmed by a lucky/unlucky cluster of arrivals (small sample = more variance). A large pool absorbs random spikes better because the spikes average out across more resources."
+ ],
+ [
+  "<b>Analogy — One small cashier queue vs one big combined queue:</b> This is exactly why airports and banks use ONE line feeding multiple counters instead of separate lines per counter. One shared big pool handles random bursts far better than several small, isolated pools — because an unlucky burst at counter 3 doesn't leave counter 1 empty and useless while counter 3 struggles.",
+  "That's why 'handling one large trunk group is recommended over several small groups' — mathematically true, and it's the same logic behind the 'single queue, multiple servers' design you see everywhere in daily life."
+ ],
+ [
+  "Efficiency shows up as higher average traffic carried PER trunk as N grows, for the same GOS target (e.g., N=11 trunks carry 0.37E/trunk, but N=24 trunks carry 0.52E/trunk, at similar GOS).",
+  "BUT: GOS becomes MORE sensitive to sudden overload as N grows — a 10% overload on a 100-trunk group inflates GOS far more (percentage-wise) than the same 10% overload on a 5-trunk group. Bigger systems are efficient in the calm, but 'brittle' under sudden shocks — a genuine engineering trade-off."
+ ],
+ [
+  "<b>Common confusion:</b> 'Big is always safer' is WRONG without qualification — big pools are more EFFICIENT under normal load, but their GOS degrades faster (proportionally) under overload. This is why network designers specify two GOS values: one for normal traffic, one for overload scenarios."
+ ]),
+
+("7. Loss Systems in Tandem — Chaining Probabilities",
+ [
+  "Sometimes a call doesn't go through just ONE trunk group — it might hop through Exchange A → Junction → Exchange B → another junction, etc. Each hop (link) has its own small chance of being congested.",
+  "The trick to combining these: think about the PROBABILITY OF SUCCESS at each stage, multiply those together to get overall success probability, then convert back to overall failure (GOS)."
+ ],
+ [
+  "<b>Analogy — Relay race with obstacles:</b> Imagine 3 relay runners, each with some chance of tripping on their own obstacle. The chance that ALL THREE make it through cleanly is the PRODUCT of each one's individual success chance, not the sum. The overall FAILURE chance is what's left over.",
+  "If each stage 'trips' rarely, the chance of TWO stages both tripping on the SAME call is so small it's basically negligible — which is exactly why B ≈ B₁ + B₂ works as an approximation when B₁, B₂ are small."
+ ],
+ [
+  "Success at both links = (1−B₁)(1−B₂). Overall failure B = 1 − (1−B₁)(1−B₂) = B₁ + B₂ − B₁B₂.",
+  "When B₁, B₂ << 1, the cross-term B₁B₂ is tiny-squared-tiny, so it's dropped: B ≈ B₁ + B₂. For N links: B = ΣB<sub>k</sub>."
+ ],
+ [
+  "<b>Common confusion:</b> This simple ADDITION of GOS values silently assumes all links share the SAME busy hour. In reality, different links (especially across time zones or with different traffic patterns) may have DIFFERENT busy hours — the formula ignores this real-world mismatch, which is exactly one of its stated drawbacks."
+ ]),
+
+("8. Queuing Systems (Erlang C / Second Erlang Distribution) — Adding a 'Waiting Room'",
+ [
+  "Now change the rule: instead of turning away the extra caller, make them WAIT until a trunk frees up. This is exactly what happens at a call center, or a bank with one line feeding multiple tellers.",
+  "Below N calls in the system: it behaves exactly like the lost-call system (no queue needed yet — everyone gets served instantly). Above N calls: extra calls form a queue and wait their turn."
+ ],
+ [
+  "<b>Analogy — Bank with 5 tellers and a waiting line:</b> If fewer than 5 customers are present, everyone gets an open teller instantly — this is 'Case I'. The moment a 6th customer arrives with all 5 tellers busy, they must wait in line — this is 'Case II'. The 'Second Erlang Distribution' is just the maths of figuring out how likely you are to be the unlucky one who has to wait, and how long that line tends to get."
+ ],
+ [
+  "Case I (x<N, no queue): P(x) = (A<super>x</super>/x!)P(0) — same shape as before.",
+  "Case II (x≥N, queue exists): P(x) = (N<super>N</super>/N!)(A/N)<super>x</super>P(0) — derived by balancing 'transition rate into state x' with 'transition rate out of state x' (a classic birth-death balance, just like the bathtub-equilibrium idea from earlier).",
+  "'M/M/N' naming: first M = arrivals are memoryless (Poisson/random), second M = service time is also memoryless (negative exponential), N = number of servers."
+ ],
+ [
+  "<b>Common confusion:</b> This model assumes an INFINITE queue is allowed (people never give up waiting, and there's no cap on line length). Real life obviously isn't like that — which is exactly why the NEXT topic, 'Finite Queue Capacity,' had to be introduced as a more realistic patch."
+ ]),
+
+("9. Probability of Delay (Erlang's Delay Formula) — 'Will I Have to Wait At All?'",
+ [
+  "This just asks a slightly different question than GOS in the lost-call world: not 'will my call be REJECTED', but 'will my call have to WAIT at all before being served?'",
+  "It's derived exactly the same way GOS was — by asking 'what's the probability that x ≥ N', i.e., that all servers are already occupied when I arrive."
+ ],
+ [
+  "<b>Analogy — Airport check-in:</b> P<sub>D</sub> is like asking: 'Out of all the flights checking in today, what fraction of passengers arrive to find EVERY counter occupied, forcing them into the queue?' It's not about getting turned away (that can't happen in a queuing system) — it's purely about whether you get IMMEDIATE service or have to wait."
+ ],
+ [
+  "P<sub>D</sub> = P(x ≥ N) = [A<super>N</super>/N!][N/(N−A)]·P(0), which — after substituting P(0) — becomes exactly E<sub>2,N</sub>(A), Erlang's Delay Formula.",
+  "This only makes sense when A < N (otherwise the queue would grow forever, mathematically 'blowing up' — the system would be permanently overloaded)."
+ ],
+ [
+  "<b>Common confusion:</b> P<sub>D</sub> is NOT the same as GOS(B) from lost-call systems, even though both look similar mathematically. GOS = probability of being REJECTED. P<sub>D</sub> = probability of merely being DELAYED (but still eventually served). Don't mix these two up in an exam."
+ ]),
+
+("10. Finite Queue Capacity — Making the Waiting Room Realistic",
+ [
+  "In reality, no waiting room (memory buffer, call queue, etc.) is infinite. There's a maximum queue length Q. Once that's also full, new arrivals are simply lost — even though this IS a 'queuing system'.",
+  "So this topic is really just: 'What if the queuing system also has an upper limit, like the lost-call system did?' — a hybrid of both worlds."
+ ],
+ [
+  "<b>Analogy — A restaurant with a waiting bench:</b> 5 tables (N=5) plus a bench that only fits Q=3 more waiting parties. If all tables AND the bench are full, the next party is turned away — even though this restaurant DOES have a waiting system, it's not infinite."
+ ],
+ [
+  "The system boundary becomes x ≤ Q+N instead of x ≤ ∞.",
+  "Loss probability = P(x ≥ Q+N) = (A/N)<super>Q</super> × P<sub>D</sub> — notice it's just the delay probability, scaled down by how 'deep' the finite queue is (the bigger Q is, the smaller (A/N)^Q gets, meaning fewer people are turned away — makes intuitive sense: a longer bench means fewer people get sent home)."
+ ],
+ [
+  "<b>Common confusion:</b> Increasing Q reduces loss probability but does NOT reduce congestion or delay for those already waiting — a longer bench means fewer people get turned away, but the AVERAGE WAIT for those in the queue can actually get worse, not better."
+ ]),
+
+("11. Signalling — 'The Handshake Language of the Network'",
+ [
+  "Strip away the jargon: signalling is just how two pieces of network equipment TALK to each other to set up, manage, and tear down a call — completely separate from the actual voice conversation itself.",
+  "Three levels of this 'conversation' happen: between your PHONE and the local exchange (subscriber loop signalling), WITHIN one exchange as it processes your call internally (intra-exchange), and BETWEEN exchanges as the call is routed onward (inter-exchange)."
+ ],
+ [
+  "<b>Analogy — Ordering food through multiple waiters:</b> You (the phone) tell the first waiter (local exchange) what you want. That waiter internally tells the kitchen (intra-exchange signalling) what's needed. Then, if your order needs another restaurant's kitchen (a call to another exchange), waiters from both restaurants must coordinate (inter-exchange signalling) — agreeing on the order, confirming it's received, and confirming it's ready — all BEFORE any food (voice) actually moves."
+ ],
+ [
+  "Supervision signals = 'are you there, are you free, are you done?' (on-hook/off-hook). Address signals = 'here's the number I want' (the digits). Tone/announcement signals = 'here's some feedback for you' (ringing, busy tone).",
+  "'Compelled signalling' = a strict handshake protocol: don't send the next signal until you get an acknowledgment for the current one — very reliable, but a bit slow (like sending a registered letter and waiting for confirmation before sending the next one)."
+ ],
+ [
+  "<b>Common confusion:</b> Students conflate 'signalling' with 'the actual call/voice data'. They are fundamentally different streams of information — signalling is the 'metadata/control conversation', voice is the 'payload'. Some systems even send them on completely different physical channels (this is exactly the point of Common Channel Signalling, below)."
+ ]),
+
+("12. In-Band vs Out-Band Signalling — Sharing the Room or Not",
+ [
+  "The core question: should the control 'chatter' between exchanges use the SAME frequency band as the actual voice, or a SEPARATE band?",
+  "In-band uses the voice band itself (300–3400 Hz) for its tones — meaning the signalling tone could theoretically be confused with a person's voice if they happen to hum the wrong pitch (e.g., certain whistled tones used to cause real fraud historically — 'phone phreaking' with a toy whistle at ~2600 Hz is a famous real example!).",
+  "Out-band avoids this entirely by putting control tones ABOVE the voice band (up to 4000 Hz) — where human speech simply doesn't reach, so there's zero risk of the voice accidentally imitating a control signal."
+ ],
+ [
+  "<b>Analogy — Talking in a shared room vs a separate room:</b> In-band signalling is like the control-room staff and the customers TALKING IN THE SAME ROOM at similar pitches — occasionally a customer's voice might accidentally sound like a command and confuse the system. Out-band signalling is like giving the control-room staff their own private walkie-talkie channel on a completely different frequency, so customer chatter can NEVER be mistaken for a command."
+ ],
+ [
+  "In-band: 300–3400 Hz (same as speech) — needs 'guard circuits' (a band-stop filter) to try to tell speech and true signalling tones apart. Out-band: above 3400 Hz, up to 4000 Hz (e.g., 3700/3825 Hz) — completely separate territory from speech.",
+  "This maps DIRECTLY onto the real historical vulnerability: the famous 2600 Hz tone used in old US phone systems was an IN-BAND signalling frequency, which is exactly why blowing a toy whistle at that pitch could once trick the network — a perfect real-world illustration of in-band's core weakness."
+ ],
+ [
+  "<b>Common confusion:</b> Out-band is NOT the same as Common Channel Signalling (CCS), even though both aim to separate control from voice. Out-band still travels on the SAME physical trunk/circuit as the voice call, just a different FREQUENCY within it. CCS goes a step further and uses an entirely separate physical/logical CHANNEL not tied to any specific trunk at all."
+ ]),
+
+("13. PCM Signalling — Squeezing Control Bits Into the Digital Stream",
+ [
+  "Once telephony went digital (PCM), the 'signalling problem' changed shape entirely — instead of choosing a frequency, you now choose WHICH BITS in a digital frame carry control info versus speech info.",
+  "In-slot: steal 1 out of every 8 bits from EACH speech sample to carry control info (a small, constant 'tax' on every channel). Out-slot: don't touch the speech channels at all — instead, dedicate ONE ENTIRE separate channel (like channel 16 in the European system) purely to carrying everyone else's signalling info."
+ ],
+ [
+  "<b>Analogy — In-slot is a 'tax on every letter'; out-slot is a 'separate mail sorting office':</b> In-slot signalling is like clipping a tiny corner off every single envelope (speech channel) to write a routing code on it — slightly reduces each envelope's payload capacity (7/8 speech bits instead of full 8). Out-slot is like having ONE dedicated envelope (channel 16) whose entire job is carrying routing instructions for ALL the other envelopes, leaving every other envelope at full capacity."
+ ],
+ [
+  "European 30-channel system: 32 slots × 8 bits, 2048 kbps total. Slot 0 = framing. Slot 16 = signalling for ALL 30 speech channels (channels 1–15 and 17–31) — 16 successive frames form one multiframe (2 ms) to fit in enough signalling info for every channel.",
+  "US/DS1 system: 24 channels × 8 bits + 1 framing bit = 193 bits/frame, 1.544 Mbps. It uses in-slot signalling — 'robbing' 1 bit from every 6th frame's 8-bit slot (giving 7 bits speech + occasional 1 bit signalling, aka 'bit robbing')."
+ ],
+ [
+  "<b>Common confusion:</b> Don't assume '30-channel system' means literally 30 physical time slots — it actually uses 32 slots total (30 for speech, 1 for framing, 1 for signalling). The 'channel 16 carries signalling for channels 1-15 and 17-31' detail trips up a lot of students who forget the framing/signalling slots exist."
+ ]),
+
+("14. Common Channel Signalling (CCS) — The Big Mental Leap",
+ [
+  "This is the single biggest conceptual jump in the whole chapter, so it deserves real intuition-building, not just memorized bullet points.",
+  "In OLDER systems (in-channel/channel-associated), EVERY trunk carries its OWN control information riding along inside it. That means N trunks need N sets of signalling equipment — expensive, slow, and each trunk is 'busy' with control overhead even before a real call starts.",
+  "CCS breaks this coupling completely: ONE shared digital data link now carries the control messages for an ENTIRE GROUP of trunks (maybe hundreds), while the trunks themselves carry ONLY voice, nothing else."
+ ],
+ [
+  "<b>Analogy — Air Traffic Control tower vs each plane radioing separately to every other plane:</b> Old channel-associated signalling is like every single airplane having to broadcast its own position/intentions directly and separately to every other plane on its own private frequency — expensive, slow, redundant equipment on every plane. CCS is like having ONE central control tower that ALL planes talk to over a SHARED radio channel — the tower coordinates everything centrally, and planes themselves don't need to carry all that extra communication gear.",
+  "This is also why CCS needs NO 'seize' signal — the very first message sent already IDENTIFIES which trunk/circuit it's talking about (like an air traffic controller saying 'Flight 202, you are cleared to land' — the flight number is embedded right in the first message, no separate 'reservation' step needed)."
+ ],
+ [
+  "The message itself carries a 'circuit label' inside it (11 bits in the SUM format) — this is literally how the system says 'this control message is ABOUT trunk #47', even though it's not travelling ON trunk #47 physically.",
+  "One 64 kbps signalling link can support 1000–1500 speech circuits — a huge efficiency win, since only ONE data link's worth of hardware is needed for hundreds of voice trunks, instead of hundreds of individual signalling circuits."
+ ],
+ [
+  "<b>Common confusion:</b> Because signalling is on a SEPARATE channel, students sometimes assume the signalling data physically travels alongside the SAME wire the voice uses. It might, or it might not — the KEY property of CCS isn't about physical wires, it's that the signalling channel is LOGICALLY independent of any one specific trunk, letting it manage MANY trunks with one shared connection."
+ ]),
+
+("15. CCITT SS6 & SS7 — Standardizing the 'Language'",
+ [
+  "Once CCS became the winning idea, the world needed everyone to speak the SAME 'signalling language' so different countries' exchanges could talk to each other — that's exactly what CCITT standardization (SS6, then later SS7) provided.",
+  "SS6 was built for the ANALOG-era international network — fixed-size 28-bit signal units, low bit rates (2.4/4.8 kbps), grouped into blocks of 12 with built-in parity-based error checking."
+ ],
+ [
+  "<b>Analogy — Agreeing on a common alphabet & grammar for international mail:</b> Before SS6, imagine every country's postal service using its own private code for addressing envelopes — chaos when mail crosses borders. SS6 is like the whole world agreeing: 'every envelope will have EXACTLY 28 symbols, arranged in this exact structure, with a checksum symbol at a fixed position, and we'll group envelopes in batches of 12 with the 12th being a delivery-confirmation slip.'"
+ ],
+ [
+  "Processor → decides WHAT to say; Coder → adds the parity bits (like adding a checksum before mailing); the message travels over the signalling channel; Decoder on the other end → checks that checksum, and either accepts (forwards to Input Buffer) or REJECTS silently if corrupted (discards, awaiting a retransmission implicitly).",
+  "This entire architecture is basically a mini communication PROTOCOL STACK, decades before people casually used that term — encode, transmit, error-check, decode, forward."
+ ],
+ [
+  "<b>Common confusion:</b> SS6's fixed 28-bit size (20 info + 8 parity) is a RIGID format — it can't easily carry variable-length or richer messages. This rigidity is exactly why SS7 (a later, more flexible, packet-like system) eventually replaced it for modern digital networks — a good exam point if asked to compare or justify the evolution."
+ ]),
+
+("16. Pulling It All Together — The Big Picture",
+ [
+  "Traffic engineering (first half of the chapter) answers: 'How many trunks do we need, and how often will people be unlucky?' — it's fundamentally a probability/queuing problem, always built on the same two pillars: Pure Chance Traffic (Poisson arrivals) and Statistical Equilibrium (steady-state balance).",
+  "Signalling (second half) answers a completely different question: 'How do the machines TALK to each other to set up, manage and tear down each call?' — it evolved from crude DC pulses, to in-band/out-band tones, to digital PCM bits, to fully independent Common Channel Signalling.",
+  "Notice the RECURRING PATTERN across both halves: every major formula in this chapter comes from writing a 'balance equation' (arrivals = departures, or state x−1 flows into state x at the same rate state x flows into x+1) and then just solving it. If you understand THAT one recurring trick, you can re-derive almost every formula in this chapter from scratch, even if you forget the final formula under exam pressure."
+ ],
+ [
+  "<b>Final analogy — It's all just 'flow in = flow out':</b> Whether it's water in a bathtub, cars in a parking lot, customers at a bank, or calls on a trunk group — EVERY steady-state formula in this chapter is secretly the same idea: things arrive, things leave, and in a stable system, those two rates must balance. Once you see this one recurring skeleton, the chapter stops being '15 different scary formulas' and becomes 'one idea, applied 15 times in slightly different costumes.'"
+ ],
+ [],
+ []),
+]
+
+# =========================================================================
+# BUILD PDF
+# =========================================================================
+doc = SimpleDocTemplate("/mnt/user-data/outputs/Traffic_Engineering_Signalling_Feynman_Notes.pdf",
+                         pagesize=A4, topMargin=0.6*inch, bottomMargin=0.6*inch,
+                         leftMargin=0.65*inch, rightMargin=0.65*inch)
+
+story = []
+story.append(Paragraph("Feynman-Style Thinking Notes", title_style))
+story.append(Paragraph("Chapter 2: Traffic Engineering and Signalling", subtitle_style))
+story.append(Paragraph("\"If you can't explain it simply, you don't understand it well enough.\"", subtitle_style))
+story.append(Spacer(1, 10))
+story.append(HRFlowable(width="100%", thickness=1.2, color=colors.HexColor('#1a3d6d')))
+story.append(Spacer(1, 10))
+story.append(Paragraph(
+  "Each topic below is broken into: <b>Plain-Words Explanation</b> (no jargon), "
+  "<b>Everyday Analogy</b> (a real-world picture to anchor the idea), "
+  "<b>Core Idea in Math</b> (the minimum formula/logic worth remembering), and "
+  "<b>Where Students Usually Trip Up</b> (the exact gap the Feynman technique is meant to expose).",
+  body_style))
+story.append(Spacer(1, 8))
+
+for title, plain, analogy, math, gap in topics:
+    block = []
+    block.append(Paragraph(title, topic_style))
+    if plain:
+        block.append(Paragraph("PLAIN-WORDS EXPLANATION", plain_head))
+        block.append(bullets(plain))
+    if analogy:
+        block.append(Paragraph("EVERYDAY ANALOGY", analogy_head))
+        block.append(bullets(analogy))
+    if math:
+        block.append(Paragraph("CORE IDEA IN MATH", math_head))
+        block.append(bullets(math))
+    if gap:
+        block.append(Paragraph("WHERE STUDENTS TRIP UP", gap_head))
+        block.append(bullets(gap))
+    block.append(Spacer(1, 6))
+    story.append(KeepTogether(block[:2]))  # keep title+first section together at minimum
+    for extra in block[2:]:
+        story.append(extra)
+    story.append(HRFlowable(width="100%", thickness=0.5, color=colors.HexColor('#cccccc')))
+    story.append(Spacer(1, 6))
+
+doc.build(story)
+print("Feynman PDF created successfully")

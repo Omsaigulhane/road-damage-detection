@@ -77,29 +77,31 @@ dimension_estimation:
 # Severity engine
 # ---------------------------------------------------------------------------
 severity:
-  # normalization reference points (documented assumptions, not measured constants)
   normalization:
-    size_reference_relative_area: 0.06   # relative_area at/above this saturates size_score to 1.0
+    size_reference_relative_area: 0.06
     dimension_reference_m:
-      pothole: 0.6   # estimated width/diameter (m) that saturates dimension_score to 1.0
-      crack: 1.5      # estimated length (m) that saturates dimension_score to 1.0
+      pothole: 0.6
+      crack: 1.5
+    vibration_reference_g:
+      baseline_g: null   # set after real drive-test calibration
+      max_g: null
 
   weights:
     pothole:
       size: 0.40
       dimension: 0.40
       confidence: 0.20
+      vibration: 0.0
     crack:
       size: 0.45
       dimension: 0.35
       confidence: 0.20
+      vibration: 0.0
 
   thresholds:
     low: 25
     moderate: 50
     high: 75
-    # 0-25 Low | >25-50 Moderate | >50-75 High | >75-100 Critical
-
 # ---------------------------------------------------------------------------
 # Database
 # ---------------------------------------------------------------------------
@@ -119,3 +121,8 @@ outputs:
 # ---------------------------------------------------------------------------
 logging:
   level: "INFO"
+
+
+hardware:
+  sensor_board_url: "http://10.188.162.166"
+  

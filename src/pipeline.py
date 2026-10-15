@@ -65,35 +65,70 @@ class RoadDamagePipeline:
         self.dimension_estimator = DimensionEstimator(config=self.config)
         self.severity_engine = SeverityEngine(config=self.config)
 
-    def process_image(self, image: np.ndarray) -> tuple[list[DetectionOutcome], np.ndarray, float]:
+    def process_image(
+        self,
+        image: np.ndarray,
+        vibration_magnitude_g: Optional[float] = None,
+    ) -> tuple[list[DetectionOutcome], np.ndarray, float]:
         """Returns (outcomes, annotated_image, inference_time_ms)."""
         result = self.detector.detect(image)
         outcomes: list[DetectionOutcome] = []
 
         for det in result.detections:
-            metrics = compute_box_metrics(det, result.image_width, result.image_height)
+            metrics = compute_box_metrics(
+                det,
+                result.image_width,
+                result.image_height,
+            )
 
-            # Use the larger of width/height as the representative 1D size
-            # for dimension estimation (documented simplification).
             representative_px = max(metrics.width_px, metrics.height_px)
-            dimension = self.dimension_estimator.estimate(metrics.width_px, metrics.height_px)
-            estimated_size_m = dimension.estimated_width_m if dimension.calibration_available else None
+
+            dimension = self.dimension_estimator.estimate(
+                metrics.width_px,
+                metrics.height_px,
+            )
+
+            estimated_size_m = (
+                dimension.estimated_width_m
+                if dimension.calibration_available
+                else None
+            )
+
             if estimated_size_m is not None and dimension.estimated_height_m:
-                estimated_size_m = max(dimension.estimated_width_m, dimension.estimated_height_m)
+                estimated_size_m = max(
+                    dimension.estimated_width_m,
+                    dimension.estimated_height_m,
+                )
 
             severity = self.severity_engine.compute(
                 damage_type=det.class_name,
                 relative_area=metrics.relative_area,
                 confidence=det.confidence,
                 estimated_size_m=estimated_size_m,
+                vibration_magnitude_g=vibration_magnitude_g,
             )
 
-            outcomes.append(DetectionOutcome(detection=det, metrics=metrics, dimension=dimension, severity=severity))
+            outcomes.append(
+                DetectionOutcome(
+                    detection=det,
+                    metrics=metrics,
+                    dimension=dimension,
+                    severity=severity,
+                )
+            )
 
         severities_for_draw = {
-            i: {"severity_score": o.severity.severity_score, "severity_category": o.severity.severity_category}
+            i: {
+                "severity_score": o.severity.severity_score,
+                "severity_category": o.severity.severity_category,
+            }
             for i, o in enumerate(outcomes)
         }
-        annotated = draw_detections(image, result.detections, severities_for_draw)
+
+        annotated = draw_detections(
+            image,
+            result.detections,
+            severities_for_draw,
+        )
 
         return outcomes, annotated, result.inference_time_ms
